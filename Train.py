@@ -19,6 +19,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.metrics import confusion_matrix, multilabel_confusion_matrix, classification_report, ConfusionMatrixDisplay
 from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
+
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.WARN)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -32,7 +33,6 @@ def Generate_Train_Dataset(Test_PATH):
     print('-' * 30)
     class_list = os.listdir(Test_PATH)
     print(class_list)
-
 
     B_list = os.listdir(Test_PATH + "Benign/")
     M_list = os.listdir(Test_PATH + "Malignant/")
@@ -77,7 +77,6 @@ def Generate_Train_Dataset(Test_PATH):
 
 
 def Generate_Test_Dataset(Test_PATH):
-
     class_list = os.listdir(Test_PATH)
     B_list = os.listdir(Test_PATH + "Benign/")
     M_list = os.listdir(Test_PATH + "Malignant/")
@@ -205,8 +204,8 @@ def xcept():
 
 def res152():
     API_model = ResNet152V2(include_top=False, weights='imagenet', input_tensor=None,
-                         input_shape=(train_img.shape[1], train_img.shape[2], 3),
-                         pooling=None, classes=4)
+                            input_shape=(train_img.shape[1], train_img.shape[2], 3),
+                            pooling=None, classes=4)
     x = API_model.output
     x = GlobalAveragePooling2D()(x)
     output = Dense(4, activation='softmax')(x)
@@ -222,7 +221,7 @@ def normal_learning(train, classes, val, val_C, weight):
     adagrad = optimizers.Adagrad(lr=1e-05)
     API_model.summary()
     API_model.compile(loss="categorical_crossentropy", optimizer=adam,
-                  metrics=[metrics.mae, metrics.categorical_accuracy])
+                      metrics=[metrics.mae, metrics.categorical_accuracy])
     tensorboard = TensorBoard(log_dir="logs_test/xcept_0825_adam_Transfer_v4_6_NonM/", histogram_freq=1,
                               write_graph=True)
     model_checkpoint = ModelCheckpoint('HDF5s/xcept_0825_adam_Transfer_v4_6_NonM.hdf5', monitor='loss',
@@ -238,29 +237,30 @@ def class_weight(label):
     Malignant = list(label).count(1)
     Normal = list(label).count(2)
     NP = list(label).count(3)
-    
+
     weight_for_0 = (1 / benign) * (label.shape[0] / 4)
-    weight_for_3 = (1 / Malignant) * (labels.shape[0] / 4)
+    weight_for_3 = (1 / Malignant) * (label.shape[0] / 4)
     weight_for_2 = (1 / Normal) * (label.shape[0] / 4)
     weight_for_1 = (1 / NP) * (label.shape[0] / 4)
     class_weight = {0: weight_for_0, 1: weight_for_1, 2: weight_for_2, 3: weight_for_3}
     print('Weight for class Benign: {:.2f}'.format(weight_for_0), 'Weight for class NP: {:.2f}'.format(weight_for_1),
-          'Weight for class Normal: {:.2f}'.format(weight_for_2), 'Weight for class Malignant: {:.2f}'.format(weight_for_3))
+          'Weight for class Normal: {:.2f}'.format(weight_for_2),
+          'Weight for class Malignant: {:.2f}'.format(weight_for_3))
     return class_weight
 
 
 def NonM_class_weight(label):
     Non_Malignant = list(label).count(0)
     Malignant = list(label).count(1)
-    
+
     weight_for_1 = (1 / Malignant) * (label.shape[0] / 2)
     weight_for_0 = (1 / Non_Malignant) * (label.shape[0] / 2)
-    
+
     class_weight = {0: weight_for_0, 1: weight_for_1}
     print('Weight for class Non Malignant: {:.2f}'.format(weight_for_0),
           'Weight for class Malignant: {:.2f}'.format(weight_for_1))
     return class_weight
-            
+
 
 if __name__ == '__main__':
     # gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -278,21 +278,23 @@ if __name__ == '__main__':
     img_rows = 331
     img_cols = 331
     classes = ["Non-Malignant", "Malignant"]
-    Generate_Train_Dataset(data_path)
-    Generate_Test_Dataset(test_data_path)
+    
+    #____________Creat npy for learning_______________
+    # Generate_Train_Dataset(data_path)
+    # Generate_Test_Dataset(test_data_path)
+    
+    #_____________Load npy data_____________________
     train_img, train_classes, test_img, test_classes = load_npy()
-    
-    ################### Non Malignant vs Malignant #################
 
+    #___________________Class weight______________
     # class_weight = NonM_class_weight(train_classes)
-
-    ############# 4 Class ###############
     class_weight = class_weight(train_classes)
-    
+
+    # ___________________Train______________
     train_X, val_X, train_Y, val_Y = train_test_split(train_img, train_classes, test_size=0.4, random_state=123)
-    
+
     train_Class = tf.keras.utils.to_categorical(train_Y)
     test_Class = tf.keras.utils.to_categorical(test_classes)
     Val_Class = tf.keras.utils.to_categorical(val_Y)
 
-    # normal_learning(train_X, train_Class, val_X, Val_Class, class_weight)
+    normal_learning(train_X, train_Class, val_X, Val_Class, class_weight)
