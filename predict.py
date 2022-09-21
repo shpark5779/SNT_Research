@@ -3,26 +3,19 @@ import os
 import numpy as np
 import cv2
 import tensorflow as tf
-import matplotlib.pyplot as plt
-from tensorflow.python.keras.callbacks import TensorBoard
-from tensorflow.keras.applications.resnet_v2 import ResNet152V2, ResNet50V2, ResNet101V2
+from tensorflow.keras.applications.resnet_v2 import ResNet152V2
 from tensorflow.keras.applications.nasnet import NASNetLarge
-from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg19 import VGG19
 from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
-from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.xception import Xception
 from tensorflow.keras import optimizers, metrics
-from tensorflow.keras.callbacks import ModelCheckpoint, History, EarlyStopping
-from tensorflow.keras.layers import BatchNormalization, Flatten, Dense, Dropout, Input, GlobalAveragePooling2D
+from tensorflow.keras.layers import Flatten, Dense, Dropout, GlobalAveragePooling2D
 from tensorflow.keras.models import Model
-from tensorflow.keras.utils import multi_gpu_model
-# from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
-# from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
-from sklearn.metrics import multilabel_confusion_matrix, classification_report, ConfusionMatrixDisplay, roc_curve, auc,\
-    roc_auc_score, average_precision_score
-from sklearn.multiclass import OneVsRestClassifier
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import multilabel_confusion_matrix, classification_report, ConfusionMatrixDisplay, roc_curve, auc, \
+    average_precision_score
 from itertools import cycle
 import pandas as pd
 from tensorflow import keras
@@ -157,7 +150,7 @@ def save_and_display_gradcam(img, heatmap, Number, alpha=0.4):
     superimposed_img = keras.preprocessing.image.array_to_img(superimposed_img)
     # superimposed_img = superimposed_img[:, :, ::-1]
     # Save the superimposed image
-    cam_path = "Gradcam_result/Last_Version_pred/"+str(Number)+".png"
+    cam_path = "Gradcam_result/Last_Version_pred/" + str(Number) + ".png"
     superimposed_img.save(cam_path)
 
     # Display Grad CAM
@@ -194,8 +187,8 @@ def vgg_19():
 
 def naslarge():
     API_model = NASNetLarge(include_top=False, weights='imagenet', input_tensor=None,
-                      input_shape=(train.shape[1], train.shape[2], 3),
-                      pooling=None, classes=4)
+                            input_shape=(train.shape[1], train.shape[2], 3),
+                            pooling=None, classes=4)
     x = API_model.output
     x = GlobalAveragePooling2D()(x)
     x = Dropout(0.5)(x)
@@ -207,8 +200,8 @@ def naslarge():
 
 def xcept():
     API_model = Xception(include_top=False, weights='imagenet', input_tensor=None,
-                            input_shape = (train.shape[1], train.shape[2], 3),
-                            pooling=None, classes=2)
+                         input_shape=(train.shape[1], train.shape[2], 3),
+                         pooling=None, classes=2)
     x = API_model.output
     x = GlobalAveragePooling2D()(x)
     output = Dense(2, activation='softmax')(x)
@@ -219,8 +212,8 @@ def xcept():
 
 def res152():
     API_model = ResNet152V2(include_top=False, weights='imagenet', input_tensor=None,
-                         input_shape=(train.shape[1], train.shape[2], 3),
-                         pooling=None, classes=4)
+                            input_shape=(train.shape[1], train.shape[2], 3),
+                            pooling=None, classes=4)
     x = API_model.output
     x = GlobalAveragePooling2D()(x)
     output = Dense(4, activation='softmax')(x)
@@ -236,7 +229,7 @@ def Predict(test, test_classes):
     # adagrad = optimizers.Adagrad(lr=1e-05)
     API_model.summary()
     API_model.compile(loss="categorical_crossentropy", optimizer=adam,
-                  metrics=[metrics.mae, metrics.categorical_accuracy])
+                      metrics=[metrics.mae, metrics.categorical_accuracy])
     print('-' * 30)
     print('Loading saved weights...')
     print('-' * 30)
@@ -254,7 +247,12 @@ def Predict(test, test_classes):
     imgs_predict_test = np.argmax(imgs_predict_test, axis=1)
     print(test_classes)
     print(imgs_predict_test)
-
+    
+    test_classes_2 = test_classes.copy()
+    imgs_predict_test_2 = imgs_predict_test.copy()
+    test_classes = np.argmax(test_classes, axis=1)
+    imgs_predict_test = np.argmax(imgs_predict_test, axis=1)
+    
     ############### 4 Class #############
 
     # result = multilabel_confusion_matrix(test_classes, imgs_predict_test)
@@ -311,50 +309,40 @@ def Predict(test, test_classes):
     print("Non-Malignant AP: ", ap[0], "Malignant AP: ", ap[1])
     print("mAP: ", map / n_classes)
 
-
     # ______________AUC______________________
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
     print(test_classes_2.shape)
     print(imgs_predict_test_2.shape)
-    test_classes_1 = test_classes.reshape(-1, 1)
-    imgs_predict_test_1 = imgs_predict_test.reshape(-1, 1)
-    
+
+
     for i in range(n_classes):
         fpr[i], tpr[i], _ = roc_curve(test_classes_2[:, i], imgs_predict_test_2[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
-    
+
     # Compute micro-average ROC curve and ROC area
     fpr["micro"], tpr["micro"], _ = roc_curve(test_classes_2.ravel(), imgs_predict_test_2.ravel())
     roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-    
+
     # First aggregate all false positive rates
     all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
-    
+
     # Then interpolate all ROC curves at this points
     mean_tpr = np.zeros_like(all_fpr)
     for i in range(n_classes):
         mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
-    
+
     # Finally average it and compute AUC
     mean_tpr /= n_classes
-    
+
     fpr["macro"] = all_fpr
     tpr["macro"] = mean_tpr
     roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
-    
+
     # Plot all ROC curves
     plt.figure()
-    # plt.plot(
-    #     fpr["micro"],
-    #     tpr["micro"],
-    #     label="micro-average ROC curve (area = {0:0.3f})".format(roc_auc["micro"]),
-    #     color="deeppink",
-    #     linestyle=":",
-    #     linewidth=4,
-    # )
-    
+
     plt.plot(
         fpr["macro"],
         tpr["macro"],
@@ -370,7 +358,7 @@ def Predict(test, test_classes):
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
     plt.legend(loc="lower right")
-    
+
     colors = cycle(["aqua", "darkorange", "cornflowerblue", "red"])
     for i, color in zip(range(n_classes), colors):
         plt.figure()
@@ -387,22 +375,18 @@ def Predict(test, test_classes):
         plt.xlabel("False Positive Rate")
         plt.ylabel("True Positive Rate")
         plt.legend(loc="lower right")
-    
-    
-    # plt.title("Some extension of Receiver operating characteristic to multiclass")
-    # plt.legend(loc="lower right")
+
     plt.show()
-    
-    _____________Grad Cam_________________
-    Prepare image
+
+    #_____________Grad Cam_________________
+    # Prepare image
     img_size = (train.shape[1], train.shape[2])
     preprocess_input = tf.keras.applications.vgg19.preprocess_input
-    decode_predictions = tf.keras.applications.vgg19.decode_predictions
-    
+
+
     # Remove last layer's softmax
     API_model.layers[-1].activation = None
 
-    
     img_d = test[0]
     img_d = img_d[:, :, ::-1]
     img_array = preprocess_input(get_img_array(img_d, size=img_size))
@@ -411,17 +395,14 @@ def Predict(test, test_classes):
     disp.plot()
     plt.show()
     # save_and_display_gradcam(img_d, heatmap)
-    
+
     for p in range(test.shape[0]):
         img_d = test[p]
         img_d = img_d[:, :, ::-1]
         img_array = preprocess_input(get_img_array(img_d, size=img_size))
         heatmap = make_gradcam_heatmap(img_array, API_model, 'block14_sepconv2_act')
         plt.matshow(heatmap)
-        # disp.plot()
-        # plt.show()
         save_and_display_gradcam(img_d, heatmap, p)
-    
 
 
 def normalization(X):
@@ -434,9 +415,7 @@ def normalization(X):
 
 
 if __name__ == '__main__':
-
     with tf.device("/gpu:1"):
-        
         img_rows = 331
         img_cols = 331
         classes = ["NP", "Malignant"]
