@@ -1,4 +1,6 @@
 # SNT_Research
+## image sample
+https://drive.google.com/file/d/1GbtuyYL7iq6u3FJQ-V5C7LcvMaKYwJ8_/view?usp=sharing
 ## Library version
   * tensorboard (2.9.0)
   * tensorflow (2.4.1)
