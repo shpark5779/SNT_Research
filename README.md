@@ -11,3 +11,6 @@ https://drive.google.com/file/d/1GbtuyYL7iq6u3FJQ-V5C7LcvMaKYwJ8_/view?usp=shari
   * numpy (1.16.6)
   * pandas (1.2.4)
   * matplotlib (3.4.3)
+## Hardware configuration
+  * Xeon Gold 6248 (3.0 GHZ/24-core/205 W, 256 GB RAM) CPU
+  * NVIDIA Tesla V100 GPU (32 GB).
